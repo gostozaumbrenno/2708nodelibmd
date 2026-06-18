@@ -1,33 +1,38 @@
-import fs from 'fs';
-import chalk from 'chalk';
+import chalk from "chalk";
 
-function trataErro(erro) {
-  console.log(erro);
-  throw new Error(chalk.red(erro.code, 'não há arquivo no diretório'));
+function extraiLinks (arrLinks) {
+  return arrLinks.map((objetoLink) => Object.values(objetoLink).join())
 }
 
-// async/await
+async function checaStatus (listaURLs) {
+  const arrStatus = await Promise
+  .all(
+    listaURLs.map(async (url) => {
+      try {
+        const response = await fetch(url)
+        return response.status;
+      } catch (erro) {
+        return manejaErros(erro);
+      }
+    })
+  )
+  return arrStatus;
+}
 
-async function pegaArquivo(caminhoDoArquivo) {
-  try {
-    const encoding = 'utf-8';
-    const texto = await fs.promises.readFile(caminhoDoArquivo, encoding)
-    console.log(chalk.green(texto));
-  } catch (erro) {
-    trataErro(erro)
+function manejaErros (erro) {
+  if (erro.cause.code === 'ENOTFOUND') {
+    return 'link não encontrado';
+  } else {
+    return 'ocorreu algum erro';
   }
 }
 
+export default async function listaValidada (listaDeLinks) {
+  const links = extraiLinks(listaDeLinks);
+  const status = await checaStatus(links);
 
-// promises com then()
-
-// function pegaArquivo(caminhoDoArquivo) {
-//   const encoding = 'utf-8';
-//   fs.promises
-//     .readFile(caminhoDoArquivo, encoding)
-//     .then((texto) => console.log(chalk.green(texto)))
-//     .catch(trataErro)
-// }
-
-pegaArquivo('./arquivos/texto.md');
-pegaArquivo('./arquivos/');
+  return listaDeLinks.map((objeto, indice) => ({
+    ...objeto,
+    status: status[indice]
+  }))
+}
